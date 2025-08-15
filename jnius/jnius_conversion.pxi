@@ -62,7 +62,7 @@ cdef void populate_args(JNIEnv *j_env, tuple definition_args, jvalue *j_args, ar
                 j_args[index].l = NULL
 
             # numeric types
-            elif isinstance(py_arg, (int, long)):
+            elif isinstance(py_arg, int):
                 j_args[index].l = convert_python_to_jobject(
                     j_env, 'Ljava/lang/Integer;', py_arg
                 )
@@ -112,13 +112,13 @@ cdef void populate_args(JNIEnv *j_env, tuple definition_args, jvalue *j_args, ar
 
             # lambda or function
             elif callable(py_arg):
-                
+
                 # we need to make a java object in python
                 py_arg = convert_python_callable_to_jobject(argtype, py_arg)
 
-                # TODO: this line should not be needed to prevent py_arg from being GCd 
+                # TODO: this line should not be needed to prevent py_arg from being GCd
                 activeLambdaJavaProxies.add(py_arg)
-                
+
                 # next few lines is from "isinstance(py_arg, PythonJavaClass)" above
                 # except jc is None is removed, as we know it has been called by
                 # convert_python_callable_to_jobject()
@@ -399,7 +399,7 @@ def get_param_signature(m):
     return rtr
 
 def convert_python_callable_to_jobject(definition, pyarg):
-    
+
     objmethods = set(["equals", "notify", "notifyAll", "toString", "wait", "getClass"])
     # we assume that definition is java/util/function/Function
     # definition = "Ljava/util/function/Function;"
@@ -411,7 +411,7 @@ def convert_python_callable_to_jobject(definition, pyarg):
 
     if not clz.isInterface():
         raise JavaException('%s is not an interface that can be instantiated with a callable' % classname)
-    
+
     # A functional interface is an interface that has just one
     # abstract method (aside from the methods of Object)
     # https://docs.oracle.com/javase/specs/jls/se8/html/jls-9.html#jls-9.8
@@ -427,16 +427,16 @@ def convert_python_callable_to_jobject(definition, pyarg):
             continue
         # ignore methods that are in Object
         if m.getName() in objmethods:
-            continue        
+            continue
         candidateFunctionalMethods.append(m)
     if len(candidateFunctionalMethods) != 1:
-        raise JavaException("%s is not a functional interface (%d methods) that can be instantiated with a callable: %s" 
+        raise JavaException("%s is not a functional interface (%d methods) that can be instantiated with a callable: %s"
             % (classname, len(candidateFunctionalMethods), str(list(map(lambda m : m.getName(), candidateFunctionalMethods )))))
-    
+
     # functional method has been identified
     functionalMethod = candidateFunctionalMethods[0]
     functionalMethodName = functionalMethod.getName()
-    
+
     # we need a new Python class that will implement the correct interface
     class PythonLambdaArg(PythonJavaClass):
         __javainterfaces__ = [classname]
@@ -449,7 +449,7 @@ def convert_python_callable_to_jobject(definition, pyarg):
 
     # finally add the method to the instance. we use the same name
     setattr(intfInstance, functionalMethodName, pyarg)
-    
+
     # we have added a method after __init__ () was called
     # so we need to re-run introspection
     intfInstance._init_j_self_ptr()
@@ -479,7 +479,7 @@ cdef jobject convert_python_to_jobject(JNIEnv *j_env, definition, obj) except *:
             return convert_pystr_to_java(j_env, to_unicode(obj))
 
         # numeric types
-        elif isinstance(obj, (int, long)) and \
+        elif isinstance(obj, int) and \
                 definition in (
                     'Ljava/lang/Integer;',
                     'Ljava/lang/Number;',
@@ -541,7 +541,6 @@ cdef jobject convert_python_to_jobject(JNIEnv *j_env, definition, obj) except *:
         conversions = {
             int: 'I',
             bool: 'Z',
-            long: 'J',
             float: 'F',
             unicode: 'Ljava/lang/String;',
             bytes: 'B'
@@ -641,7 +640,6 @@ cdef jobject convert_pyarray_to_java(JNIEnv *j_env, definition, pyarray) except 
         conversions = {
             int: 'I',
             bool: 'Z',
-            long: 'J',
             float: 'F',
             bytes: 'B',
             str: 'Ljava/lang/String;',
